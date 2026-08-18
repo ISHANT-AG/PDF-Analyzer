@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-PDF Topic Extractor & Comparator</title>
+    <meta name="description" content="Extract, analyze, and compare topic-related paragraphs across multiple PDF documents using TF-IDF and Cosine Similarity.">
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-background"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-badge-row">
+                <span class="badge badge-offline">
+                    <span class="pulse-dot"></span> 100% Offline & Local
+                </span>
+                <span class="badge badge-tech">TF-IDF + Cosine Similarity</span>
+            </div>
+            <h1 class="app-title">Multi-PDF <span class="gradient-text">Topic Extractor</span></h1>
+            <p class="app-subtitle">
+                Upload 1 to 5 PDF documents, specify any topic or keyword, and compare how different authors and sources define and explain it side-by-side.
+            </p>
+        </header>
+
+        <!-- Main Extraction Form Card -->
+        <main class="main-card">
+            <form id="extractorForm" enctype="multipart/form-data">
+                <!-- Dropzone Area -->
+                <div class="form-section">
+                    <label class="section-label">
+                        <span class="step-number">1</span>
+                        <span>Upload PDF Documents <span class="label-hint">(Max 5 files)</span></span>
+                    </label>
+
+                    <div class="dropzone" id="dropzone">
+                        <input type="file" id="fileInput" name="files" multiple accept=".pdf" class="file-input-hidden">
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                            </div>
+                            <h3 class="dropzone-title">Drag & Drop PDF files here</h3>
+                            <p class="dropzone-subtitle">or <button type="button" class="btn-browse" id="btnBrowse">Browse Files</button> from your computer</p>
+                            <div class="dropzone-specs">Supports PDF format &bull; Up to 5 files &bull; Max 32MB total</div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Files List -->
+                    <div class="selected-files-container" id="selectedFilesContainer" style="display: none;">
+                        <div class="selected-files-header">
+                            <span class="selected-files-title">Selected Documents (<span id="fileCountBadge">0</span>/5)</span>
+                            <button type="button" class="btn-text-danger" id="btnClearFiles">Clear all</button>
+                        </div>
+                        <div class="files-grid" id="filesGrid"></div>
+                    </div>
+                </div>
+
+                <!-- Topic Search Input -->
+                <div class="form-section">
+                    <label class="section-label" for="topicInput">
+                        <span class="step-number">2</span>
+                        <span>Enter Topic or Keyword to Extract</span>
+                    </label>
+
+                    <div class="search-box-wrapper">
+                        <div class="search-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <input type="text" id="topicInput" name="topic" class="search-input" placeholder="e.g. Photosynthesis, Machine Learning, Neural Networks, Quantum Computing..." required autocomplete="off">
+                        <button type="button" class="btn-clear-input" id="btnClearInput" title="Clear topic" style="display: none;">&times;</button>
+                    </div>
+
+                    <!-- Preset Topic Quick Chips -->
+                    <div class="topic-suggestions">
+                        <span class="suggestions-label">Try sample topics:</span>
+                        <div class="suggestion-chips">
+                            <button type="button" class="chip" data-topic="Photosynthesis">🌱 Photosynthesis</button>
+                            <button type="button" class="chip" data-topic="Machine Learning">🤖 Machine Learning</button>
+                            <button type="button" class="chip" data-topic="Neural Networks">🧠 Neural Networks</button>
+                            <button type="button" class="chip" data-topic="Renewable Energy">⚡ Renewable Energy</button>
+                            <button type="button" class="chip" data-topic="Algorithm">⚙️ Algorithm</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Action Bar -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="btnSubmit">
+                        <span class="btn-text">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Extract & Compare Across PDFs
+                        </span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span>
+                            Analyzing & Extracting...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <!-- Loading State Progress Card -->
+        <div class="loading-card" id="loadingCard" style="display: none;">
+            <div class="loading-spinner-large"></div>
+            <h3 class="loading-title">Extracting & Computing TF-IDF Vectors...</h3>
+            <p class="loading-desc">Parsing PDF text with pdfplumber & computing cosine similarities across paragraphs.</p>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div class="alert-box" id="alertBox" style="display: none;">
+            <span class="alert-icon" id="alertIcon">⚠️</span>
+            <span class="alert-message" id="alertMessage"></span>
+            <button type="button" class="alert-close" id="btnAlertClose">&times;</button>
+        </div>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <!-- Results Header & Controls -->
+            <div class="results-header-card">
+                <div class="results-meta">
+                    <div class="results-badge">Extraction Results</div>
+                    <h2 class="results-title">Topic: <span class="query-highlight" id="resTopicDisplay"></span></h2>
+                    <div class="results-stats">
+                        <span class="stat-pill"><strong id="resTotalPdfs">0</strong> PDFs Analyzed</span>
+                        <span class="stat-pill"><strong id="resTotalMatches">0</strong> Relevant Paragraphs Found</span>
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <!-- View Mode Toggle -->
+                    <div class="view-mode-toggle">
+                        <button type="button" class="btn-toggle active" id="btnModeSideBySide" title="Side-by-Side Comparison Mode">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="18" rx="1"></rect>
+                                <rect x="14" y="3" width="7" height="18" rx="1"></rect>
+                            </svg>
+                            Compare Side-by-Side
+                        </button>
+                        <button type="button" class="btn-toggle" id="btnModeGrid" title="Card Grid View">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            Grid View
+                        </button>
+                    </div>
+
+                    <!-- Export Buttons -->
+                    <div class="action-buttons-group">
+                        <button type="button" class="btn-secondary" id="btnCopyReport">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy All
+                        </button>
+                        <button type="button" class="btn-secondary" id="btnDownloadReport">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Summary (.txt)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Results Container -->
+            <div id="resultsContainer" class="results-container mode-side-by-side"></div>
+        </section>
+
+        <!-- Educational Explainer Section (For Viva & Presentation) -->
+        <section class="explainer-section">
+            <div class="explainer-card">
+                <button type="button" class="explainer-toggle" id="btnToggleExplainer">
+                    <span class="explainer-header-left">
+                        <span class="explainer-icon">💡</span>
+                        <span class="explainer-title">How It Works: TF-IDF & Cosine Similarity (Viva Guide)</span>
+                    </span>
+                    <span class="explainer-chevron" id="explainerChevron">▼</span>
+                </button>
+                
+                <div class="explainer-content" id="explainerContent" style="display: none;">
+                    <div class="explainer-grid">
+                        <div class="concept-card">
+                            <div class="concept-number">1</div>
+                            <h4 class="concept-title">PDF Text Extraction</h4>
+                            <p class="concept-desc">
+                                <code>pdfplumber</code> extracts page-by-page text from each PDF document. We split and clean raw text into structured paragraphs while keeping track of the originating page numbers.
+                            </p>
+                        </div>
+
+                        <div class="concept-card">
+                            <div class="concept-number">2</div>
+                            <h4 class="concept-title">TF-IDF Vectorization</h4>
+                            <p class="concept-desc">
+                                <strong>TF (Term Frequency)</strong> measures how frequently a word appears in a paragraph. <strong>IDF (Inverse Document Frequency)</strong> penalizes common words (like "the", "is") and boosts domain-specific keywords.
+                            </p>
+                        </div>
+
+                        <div class="concept-card">
+                            <div class="concept-number">3</div>
+                            <h4 class="concept-title">Cosine Similarity Ranking</h4>
+                            <p class="concept-desc">
+                                Each paragraph and the search query are represented as mathematical vectors. Cosine similarity calculates the cosine of the angle between vectors:
+                                <span class="math-snippet">cos(θ) = (A · B) / (||A|| × ||B||)</span>
+                                Values closer to 1.0 indicate high relevance.
+                            </p>
+                        </div>
+
+                        <div class="concept-card">
+                            <div class="concept-number">4</div>
+                            <h4 class="concept-title">Fallback Keyword Matching</h4>
+                            <p class="concept-desc">
+                                If no paragraphs exceed the semantic threshold, an intelligent case-insensitive keyword scanner ensures verbatim mentions are never missed.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Multi-PDF Topic Extractor &bull; Built with Python, Flask, pdfplumber & Scikit-Learn &bull; Local & Privacy Preserving</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
